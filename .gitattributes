@@ -1,0 +1,9 @@
+* text=auto
+
+*.cjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.ts text eol=lf
+
+*.llsp3 binary
+*.vsix binary

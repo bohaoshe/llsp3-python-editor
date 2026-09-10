@@ -1,0 +1,135 @@
+{
+  "name": "llsp3-python-editor",
+  "displayName": "LLSP3 Python Editor",
+  "description": "VS Code extension for compare and edit Python source embedded in LEGO Education SPIKE .llsp3 projects.",
+  "version": "1.0.0",
+  "publisher": "bohaoshe",
+  "author": "bohaoshe",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "file:./"
+  },
+  "engines": {
+    "node": ">=22",
+    "npm": ">=10",
+    "vscode": "^1.136.0"
+  },
+  "packageManager": "npm@11.12.1",
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "llsp3",
+    "lego",
+    "spike",
+    "python"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "main": "./dist/src/extension.js",
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:llsp3.openPython",
+    "onCommand:llsp3.compareWithHead",
+    "onCommand:llsp3.compareStagedWithRemote",
+    "onCommand:llsp3.compareWorkingTreeWithIndex",
+    "onCommand:llsp3.configureGitDiff",
+    "onCustomEditor:llsp3.projectEditor",
+    "onFileSystem:llsp3"
+  ],
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "Safe conditional archive replacement and Git integration require a disk-backed local or remote workspace."
+    },
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Opening and editing are supported. Automatic Git comparison and helper configuration require workspace trust."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "llsp3.openPython",
+        "title": "Open Embedded Python",
+        "category": "LLSP3"
+      },
+      {
+        "command": "llsp3.compareWithHead",
+        "title": "Compare Embedded Python with Git Baseline",
+        "category": "LLSP3"
+      },
+      {
+        "command": "llsp3.configureGitDiff",
+        "title": "Configure Git Diff for This Repository",
+        "category": "LLSP3"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "llsp3.projectEditor",
+        "displayName": "LLSP3 Python Project",
+        "selector": [
+          {
+            "filenamePattern": "*.llsp3"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "llsp3.openPython",
+          "when": "resourceExtname == .llsp3",
+          "group": "navigation@10"
+        },
+        {
+          "command": "llsp3.compareWithHead",
+          "when": "resourceExtname == .llsp3",
+          "group": "scm@10"
+        },
+        {
+          "command": "llsp3.configureGitDiff",
+          "when": "resourceExtname == .llsp3",
+          "group": "scm@11"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "llsp3.compareWithHead",
+          "when": "resourceScheme == llsp3",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run compile",
+    "compile": "tsc -p .",
+    "watch": "tsc -p . --watch",
+    "pretest": "npm run clean && npm run compile",
+    "test": "node --test dist/test/archive.test.js",
+    "test:integration": "npm run clean && npm run compile && node dist/test/integrationRunner.js",
+    "verify": "npm test && npm run test:integration",
+    "package": "npm run clean && npm run compile && vsce package --baseContentUrl https://github.com/bohaoshe/llsp3-python-editor --baseImagesUrl https://github.com/bohaoshe/llsp3-python-editor"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1",
+    "proper-lockfile": "^4.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/mocha": "^10.0.10",
+    "@types/proper-lockfile": "^4.1.4",
+    "@types/vscode": "^1.95.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^3.9.2",
+    "mocha": "^11.7.4",
+    "typescript": "^5.7.3"
+  }
+}

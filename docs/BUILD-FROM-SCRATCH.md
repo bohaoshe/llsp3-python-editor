@@ -9,10 +9,10 @@ you already downloaded this repository and only need to build it, use
 
 Install:
 
-- Visual Studio Code (https://code.visualstudio.com/download) 1.136 or newer.
-- Node.js (https://nodejs.org) 22 or newer.
+- [Visual Studio Code](https://code.visualstudio.com/download) 1.136 or newer.
+- [Node.js](https://nodejs.org) 22 or newer.
 - npm 10 or newer.
-- Git (https://git-scm.com/install/).
+- [Git](https://git-scm.com/install/).
 
 Verify the tools:
 

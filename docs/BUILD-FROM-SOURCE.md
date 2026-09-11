@@ -10,10 +10,10 @@ folder, see [Rebuild from Scratch](BUILD-FROM-SCRATCH.md).
 
 Required:
 
-- Visual Studio Code 1.136 or newer.
-- Node.js 22 or newer.
+- Visual Studio Code (https://code.visualstudio.com/download) 1.136 or newer.
+- Node.js (https://nodejs.org) 22 or newer.
 - npm 10 or newer.
-- Git.
+- Git (https://git-scm.com/install/).
 
 Check the installed versions:
 

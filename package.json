@@ -2,7 +2,7 @@
   "name": "llsp3-python-editor",
   "displayName": "LLSP3 Python Editor",
   "description": "VS Code extension for compare and edit Python source embedded in LEGO Education SPIKE .llsp3 projects.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "bohaoshe",
   "author": "bohaoshe",
   "private": true,
@@ -101,7 +101,7 @@
       "editor/title": [
         {
           "command": "llsp3.compareWithHead",
-          "when": "resourceScheme == llsp3",
+          "when": "resourceScheme == llsp3 || llsp3.materializedSourceActive",
           "group": "navigation"
         }
       ]

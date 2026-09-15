@@ -1,3 +1,4 @@
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import * as vscode from 'vscode';
 import { GitRevisionContentProvider, LLSP3_GIT_SCHEME } from './git/revisionContentProvider';
@@ -15,9 +16,9 @@ import {
 } from './git/scmResourceIntegration';
 import { Llsp3Error, readLlsp3Project } from './llsp3/archive';
 import { Llsp3FileSystemProvider } from './llsp3/fileSystemProvider';
+import { Llsp3MaterializedSourceManager } from './llsp3/materializedSource';
 import { Llsp3ProjectEditor } from './llsp3/projectEditor';
 import {
-  createSourceUri,
   getContainerUri,
   isLlsp3Container,
   LLSP3_SOURCE_SCHEME,
@@ -33,13 +34,34 @@ export async function activate(
     context.workspaceState,
   );
   const revisionProvider = new GitRevisionContentProvider();
+  const reportError = (error: unknown): void => {
+    void vscode.window.showErrorMessage(formatError(error));
+  };
+  const materializedSources = new Llsp3MaterializedSourceManager(
+    vscode.Uri.file(path.join(tmpdir(), 'llsp3-python-editor')),
+    context.workspaceState,
+    fileSystemProvider,
+    reportError,
+  );
+  const updateMaterializedSourceContext = async (
+    editor: vscode.TextEditor | undefined,
+  ): Promise<void> => {
+    await vscode.commands.executeCommand(
+      'setContext',
+      'llsp3.materializedSourceActive',
+      editor !== undefined &&
+        materializedSources.getContainer(editor.document.uri) !== undefined,
+    );
+  };
+  await updateMaterializedSourceContext(vscode.window.activeTextEditor);
 
   const openSource = async (
     container: vscode.Uri,
     viewColumn?: vscode.ViewColumn,
   ): Promise<void> => {
-    const workingContainer = normalizeContainer(container) ?? container;
-    const sourceUri = createSourceUri(workingContainer);
+    const workingContainer =
+      normalizeContainer(container, materializedSources) ?? container;
+    const sourceUri = await materializedSources.open(workingContainer);
     const document = await vscode.workspace.openTextDocument(sourceUri);
 
     const showOptions: vscode.TextDocumentShowOptions = {
@@ -61,7 +83,8 @@ export async function activate(
       readonly repositoryRoot?: string;
     } = {},
   ): Promise<void> => {
-    const workingContainer = normalizeContainer(container) ?? container;
+    const workingContainer =
+      normalizeContainer(container, materializedSources) ?? container;
     requireTrustedWorkspaceForGit();
     const stagedComparison =
       mode === 'staged'
@@ -90,7 +113,7 @@ export async function activate(
         : 'NEW - Staged Index';
     const rightUri =
       stagedComparison === undefined
-        ? createSourceUri(workingContainer)
+        ? await materializedSources.open(workingContainer)
         : revisionProvider.create(
             workingContainer,
             rightLabel,
@@ -123,10 +146,6 @@ export async function activate(
     }
   };
 
-  const reportError = (error: unknown): void => {
-    void vscode.window.showErrorMessage(formatError(error));
-  };
-
   const projectEditor = new Llsp3ProjectEditor({
     openSource,
     compareWithHead: (container, viewColumn) =>
@@ -139,14 +158,19 @@ export async function activate(
   });
   const scmResourceIntegration =
     await registerGitScmResourceIntegration(
-      (resource) => normalizeContainer(resource) !== undefined,
+      (resource) =>
+        normalizeContainer(resource, materializedSources) !== undefined,
     );
   setGitExecutablePath(scmResourceIntegration.gitExecutablePath);
 
   context.subscriptions.push(
     scmResourceIntegration.disposable,
+    materializedSources,
     fileSystemProvider,
     revisionProvider,
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      void updateMaterializedSourceContext(editor);
+    }),
     vscode.workspace.registerFileSystemProvider(
       LLSP3_SOURCE_SCHEME,
       fileSystemProvider,
@@ -173,7 +197,11 @@ export async function activate(
       'llsp3.openPython',
       async (resource?: vscode.Uri) => {
         try {
-          const container = await resolveContainer(resource, true);
+          const container = await resolveContainer(
+            resource,
+            true,
+            materializedSources,
+          );
           if (container !== undefined) {
             await openSource(container);
           }
@@ -186,7 +214,11 @@ export async function activate(
       'llsp3.compareWithHead',
       async (resource?: vscode.Uri) => {
         try {
-          const container = await resolveContainer(resource, true);
+          const container = await resolveContainer(
+            resource,
+            true,
+            materializedSources,
+          );
           if (container !== undefined) {
             await openGitComparison(container);
           }
@@ -203,6 +235,7 @@ export async function activate(
           const container = await resolveContainer(
             request.resource,
             false,
+            materializedSources,
           );
           if (container !== undefined) {
             await openGitComparison(
@@ -225,6 +258,7 @@ export async function activate(
           const container = await resolveContainer(
             request.resource,
             false,
+            materializedSources,
           );
           if (container !== undefined) {
             await openGitComparison(
@@ -247,7 +281,10 @@ export async function activate(
             requireTrustedWorkspaceForGit();
           }
 
-          const gitResource = await resolveGitResource(resource);
+          const gitResource = await resolveGitResource(
+            resource,
+            materializedSources,
+          );
           if (gitResource === undefined) {
             return;
           }
@@ -294,14 +331,16 @@ export async function activate(
 async function resolveContainer(
   resource: vscode.Uri | undefined,
   showPicker: boolean,
+  materializedSources: Llsp3MaterializedSourceManager,
 ): Promise<vscode.Uri | undefined> {
-  const explicit = normalizeContainer(resource);
+  const explicit = normalizeContainer(resource, materializedSources);
   if (explicit !== undefined) {
     return explicit;
   }
 
   const active = normalizeContainer(
     vscode.window.activeTextEditor?.document.uri,
+    materializedSources,
   );
   if (active !== undefined) {
     return active;
@@ -325,14 +364,16 @@ async function resolveContainer(
 
 async function resolveGitResource(
   resource: vscode.Uri | undefined,
+  materializedSources: Llsp3MaterializedSourceManager,
 ): Promise<vscode.Uri | undefined> {
-  const container = normalizeContainer(resource);
+  const container = normalizeContainer(resource, materializedSources);
   if (container !== undefined) {
     return container;
   }
 
   const active = normalizeContainer(
     vscode.window.activeTextEditor?.document.uri,
+    materializedSources,
   );
   if (active !== undefined) {
     return active;
@@ -343,13 +384,18 @@ async function resolveGitResource(
 
 function normalizeContainer(
   resource: vscode.Uri | undefined,
+  materializedSources: Llsp3MaterializedSourceManager,
 ): vscode.Uri | undefined {
   if (resource === undefined) {
     return undefined;
   }
+  const materializedContainer = materializedSources.getContainer(resource);
+  if (materializedContainer !== undefined) {
+    return materializedContainer;
+  }
   if (resource.scheme === LLSP3_SOURCE_SCHEME) {
     const container = getContainerUri(resource);
-    return normalizeContainer(container) ?? container;
+    return normalizeContainer(container, materializedSources) ?? container;
   }
   if (!isLlsp3Container(resource)) {
     return undefined;

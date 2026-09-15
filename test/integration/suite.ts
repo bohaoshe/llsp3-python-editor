@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import * as vscode from 'vscode';
 import { patchGitResourceGroup } from '../../src/git/scmResourceIntegration';
-import { readLlsp3Project } from '../../src/llsp3/archive';
+import {
+  readLlsp3Project,
+  updateLlsp3Source,
+} from '../../src/llsp3/archive';
 
 suite('LLSP3 editor integration', () => {
   const extensionId = 'bohaoshe.llsp3-python-editor';
@@ -30,7 +34,7 @@ suite('LLSP3 editor integration', () => {
     await vscode.commands.executeCommand('workbench.action.closeAllEditors');
   });
 
-  test('Explorer opens editable embedded Python directly', async () => {
+  test('Explorer opens a physical Python copy backed by the archive', async () => {
     const project = vscode.Uri.joinPath(
       workspaceFolder.uri,
       'tracked.llsp3',
@@ -46,11 +50,84 @@ suite('LLSP3 editor integration', () => {
       (candidate) => candidate.input instanceof vscode.TabInputText,
     );
     assert.ok(tab.input instanceof vscode.TabInputText);
-    assert.equal(tab.input.uri.scheme, 'llsp3');
+    assert.equal(tab.input.uri.scheme, 'file');
+    assert.equal(tab.input.uri.path.endsWith('.py'), true);
+    assert.equal(
+      (await vscode.workspace.fs.stat(tab.input.uri)).type,
+      vscode.FileType.File,
+    );
     assert.equal(
       await readDocument(tab.input.uri),
       'print("unstaged working tree")\n',
     );
+    assert.equal(
+      await readFile(tab.input.uri.fsPath, 'utf8'),
+      'print("unstaged working tree")\n',
+    );
+
+    const document = await vscode.workspace.openTextDocument(tab.input.uri);
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(
+      document.uri,
+      fullDocumentRange(document),
+      'print("saved from physical copy")\n',
+    );
+    assert.equal(await vscode.workspace.applyEdit(edit), true);
+    assert.equal(await document.save(), true);
+    const updatedArchive = await vscode.workspace.fs.readFile(project);
+    assert.equal(
+      readLlsp3Source(updatedArchive),
+      'print("saved from physical copy")\n',
+    );
+
+    const restoreEdit = new vscode.WorkspaceEdit();
+    restoreEdit.replace(
+      document.uri,
+      fullDocumentRange(document),
+      'print("unstaged working tree")\n',
+    );
+    assert.equal(await vscode.workspace.applyEdit(restoreEdit), true);
+    assert.equal(await document.save(), true);
+  });
+
+  test('Physical copy preserves edits after an archive conflict', async () => {
+    const project = vscode.Uri.joinPath(
+      workspaceFolder.uri,
+      'tracked.llsp3',
+    );
+    await vscode.commands.executeCommand('llsp3.openPython', project);
+
+    const tab = await waitForActiveTab(
+      (candidate) => candidate.input instanceof vscode.TabInputText,
+    );
+    assert.ok(tab.input instanceof vscode.TabInputText);
+    const document = await vscode.workspace.openTextDocument(tab.input.uri);
+    const originalArchive = await vscode.workspace.fs.readFile(project);
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(
+      document.uri,
+      fullDocumentRange(document),
+      'print("unsaved local edit")\n',
+    );
+    assert.equal(await vscode.workspace.applyEdit(edit), true);
+
+    const externalArchive = updateLlsp3Source(
+      originalArchive,
+      'print("external edit")\n',
+    );
+    await vscode.workspace.fs.writeFile(project, externalArchive);
+
+    assert.equal(await document.save(), true);
+    assert.equal(
+      readLlsp3Source(await vscode.workspace.fs.readFile(project)),
+      'print("external edit")\n',
+    );
+    assert.equal(
+      await readFile(document.uri.fsPath, 'utf8'),
+      'print("unsaved local edit")\n',
+    );
+
+    await vscode.workspace.fs.writeFile(project, originalArchive);
   });
 
   test('Staged Changes compare remote to Git index', async () => {
@@ -89,7 +166,7 @@ suite('LLSP3 editor integration', () => {
     );
     assert.ok(tab.input instanceof vscode.TabInputTextDiff);
     assert.equal(tab.input.original.scheme, 'llsp3-git');
-    assert.equal(tab.input.modified.scheme, 'llsp3');
+    assert.equal(tab.input.modified.scheme, 'file');
     assert.equal(
       await readDocument(tab.input.original),
       'print("staged index")\n',

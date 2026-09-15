@@ -158,7 +158,7 @@ npm run package
 The command cleans, compiles, and runs `vsce package`. The generated file is:
 
 ```text
-llsp3-python-editor-1.0.0.vsix
+llsp3-python-editor-1.0.1.vsix
 ```
 
 The VSIX contains compiled runtime files and runtime dependencies. Source and
@@ -167,7 +167,7 @@ test files are excluded by `.vscodeignore`.
 ## 9. Install the extension
 
 ```powershell
-code --install-extension .\llsp3-python-editor-1.0.0.vsix --force
+code --install-extension .\llsp3-python-editor-1.0.1.vsix --force
 ```
 
 Confirm the installed identity:
@@ -180,7 +180,7 @@ code --list-extensions --show-versions |
 Expected output:
 
 ```text
-bohaoshe.llsp3-python-editor@1.0.0
+bohaoshe.llsp3-python-editor@1.0.1
 ```
 
 In VS Code, press **Ctrl+Shift+P**, run **Developer: Reload Window**, and then
@@ -229,7 +229,7 @@ Use the full executable path:
 
 ```powershell
 & "$env:LOCALAPPDATA\Programs\Microsoft VS Code\Code.exe" `
-  --install-extension .\llsp3-python-editor-1.0.0.vsix --force
+  --install-extension .\llsp3-python-editor-1.0.1.vsix --force
 ```
 
 ### Integration tests cannot find VS Code

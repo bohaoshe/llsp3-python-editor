@@ -1,8 +1,10 @@
 # Changelog
 
-## 1.0.0
+## 1.0.1
 
 - Open LLSP3 Python projects as editable Python documents from Explorer.
+- Use managed physical Python working copies for compatibility with extensions
+  that require a filesystem path, including LEGO hub upload tooling.
 - Preserve project metadata and unrelated ZIP entries when saving.
 - Protect saves with conflict detection, cross-process locking, and recoverable
   file replacement.

@@ -7,10 +7,13 @@ Python projects as normal Python documents.
 
 - Click or double-click an `.llsp3` project in Explorer to open its editable
   embedded Python source.
+- Materialize the source as a managed physical `.py` file so extensions that
+  require a filesystem path can read it, including **LEGO SPIKE Prime /
+  MINDSTORMS Robot Inventor Extension**.
 - Double-click an `.llsp3` change in Source Control to open a native,
   side-by-side Python diff.
 - Edit with VS Code's native Python editor, including syntax highlighting and
-  Python extension features that support virtual file systems.
+  Python extension features that operate on normal files.
 - Save changes back to `projectbody.json` without extracting a tracked sidecar
   file. Local projects use an atomic file replacement.
 - Preserve `manifest.json`, icons, monitors, unknown entries, ZIP entry order,
@@ -25,12 +28,18 @@ Python projects as normal Python documents.
 
 1. Open a folder containing an `.llsp3` project.
 2. Click or double-click the project in Explorer to open the embedded Python.
-3. Edit the generated virtual `.py` tab.
+3. Edit the generated `.py` tab.
 4. Save normally. The original `.llsp3` file is updated atomically and appears
    as modified in VS Code Source Control.
+5. Connect the LEGO hub and use **LEGO Hub: Upload Program** from the generated
+  Python tab.
 
-The virtual Python document is not a second file. Its contents are backed by the
-`main` property in the archive's root `projectbody.json`.
+The Python tab is a physical working copy in an extension-managed temporary
+directory. It is not a tracked sidecar file. Saving it updates the `main`
+property in the archive's root `projectbody.json`, and external archive changes
+refresh the working copy while it has no unsaved edits. If both copies change,
+the extension leaves the archive untouched, preserves the temporary Python
+file, and reports the conflict.
 
 In Source Control, the comparison follows the selected Git group:
 

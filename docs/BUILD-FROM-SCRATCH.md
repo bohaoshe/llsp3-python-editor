@@ -362,7 +362,7 @@ npm run package
 Install the generated VSIX:
 
 ```powershell
-code --install-extension .\llsp3-python-editor-1.0.0.vsix --force
+code --install-extension .\llsp3-python-editor-1.0.1.vsix --force
 ```
 
 Reload VS Code with **Developer: Reload Window**.
